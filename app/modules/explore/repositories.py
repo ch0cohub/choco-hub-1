@@ -42,7 +42,7 @@ class ExploreRepository(BaseRepository):
             .join(DataSet.feature_models)
             .join(FeatureModel.fm_meta_data)
             .filter(or_(*filters))
-            .filter(DSMetaData.dataset_doi.isnot(None))  # Exclude datasets with empty dataset_doi
+            # .filter(DSMetaData.dataset_doi.isnot(None))  # Exclude datasets with empty dataset_doi
         )
         if publication_type != "any":
             matching_type = None
@@ -65,6 +65,6 @@ class ExploreRepository(BaseRepository):
             datasets = datasets.order_by(self.model.created_at.asc())
         else:
             datasets = datasets.order_by(self.model.created_at.desc())
-        if author_name:
-            datasets = datasets.filter(Author.name.ilike(f"%{author_name}%"))
+        # if author_name:
+        #     datasets = datasets.filter(Author.name.ilike(f"%{author_name}%"))
         return datasets.all()
