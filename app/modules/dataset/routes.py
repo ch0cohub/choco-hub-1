@@ -16,12 +16,14 @@ from flask import (
     make_response,
     abort,
     url_for,
+    flash
 )
 from flask_login import login_required, current_user
 
 from app.modules.dataset.forms import DataSetForm
 from app.modules.dataset.models import (
-    DSDownloadRecord
+    DSDownloadRecord,
+    DataSet
 )
 from app.modules.dataset import dataset_bp
 from app.modules.dataset.services import (
@@ -33,6 +35,7 @@ from app.modules.dataset.services import (
     DOIMappingService
 )
 from app.modules.zenodo.services import ZenodoService
+from app import db
 
 logger = logging.getLogger(__name__)
 
@@ -51,19 +54,49 @@ def create_dataset():
     form = DataSetForm()
     if request.method == "POST":
 
-        dataset = None
-
         if not form.validate_on_submit():
             return jsonify({"message": form.errors}), 400
 
         try:
             logger.info("Creating dataset...")
-            dataset = dataset_service.create_from_form(form=form, current_user=current_user)
+
+            # **Paso A: Manejar la Anonimización**
+            is_anonymous = form.is_anonymous.data
+
+            if is_anonymous:
+                # Si es anónimo, no se guardan datos de autores
+                authors_data = []
+            else:
+                # Si no es anónimo, extraer y validar los datos de autores
+                authors_data = []
+                for author_form in form.authors.entries:
+                    name = author_form.name.data.strip()
+                    affiliation = author_form.affiliation.data.strip()
+                    orcid = author_form.orcid.data.strip()
+
+                    if not name:
+                        raise ValueError("The author's name cannot be empty")
+
+                    author_data = {
+                        'name': name,
+                        'affiliation': affiliation,
+                        'orcid': orcid
+                    }
+                    authors_data.append(author_data)
+
+            # **Paso B: Crear el Dataset con la Información de Anonimización**
+            dataset = dataset_service.create_from_form(
+                form=form,
+                current_user=current_user,
+                is_anonymous=is_anonymous,
+                authors=authors_data  # Pasar los datos de autores al servicio
+            )
             logger.info(f"Created dataset: {dataset}")
             dataset_service.move_feature_models(dataset)
+
         except Exception as exc:
-            logger.exception(f"Exception while create dataset data in local {exc}")
-            return jsonify({"Exception while create dataset data in local: ": str(exc)}), 400
+            logger.exception(f"Exception while creating dataset data in local: {exc}")
+            return jsonify({"Exception while creating dataset data in local": str(exc)}), 400
 
         # send dataset as deposition to Zenodo
         data = {}
@@ -278,3 +311,14 @@ def get_unsynchronized_dataset(dataset_id):
         abort(404)
 
     return render_template("dataset/view_dataset.html", dataset=dataset)
+
+
+@dataset_bp.route("/dataset/<int:dataset_id>/toggle_anonymity", methods=["POST"])
+@login_required
+def toggle_anonymity(dataset_id):
+    dataset = DataSet.query.get_or_404(dataset_id)
+    if dataset.owner_id != current_user.id:
+        abort(403)
+    dataset.is_anonymous = not dataset.is_anonymous
+    db.session.commit()
+    return redirect(url_for('dataset.view_dataset', dataset_id=dataset_id))

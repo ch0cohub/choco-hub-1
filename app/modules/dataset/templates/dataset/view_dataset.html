@@ -40,6 +40,19 @@
                     <div>
                         <span class="badge bg-secondary">{{ dataset.get_cleaned_publication_type() }}</span>
                     </div>
+                    <!-- Botón para cambiar el estado de anonimato (Paso 6) -->
+                    {% if current_user.is_authenticated and dataset.owner_id == current_user.id %}
+                        <form action="{{ url_for('dataset.toggle_anonymity', dataset_id=dataset.id) }}" method="post">
+                            {{ csrf_field() }}
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                {% if dataset.is_anonymous %}
+                                    Make authors metadata public                                
+                                {% else %}
+                                    Anonymize authors metadata
+                                {% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
                 <p class="text-secondary">{{ dataset.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
 
@@ -77,17 +90,21 @@
                         </span>
                     </div>
                     <div class="col-md-8 col-12">
-                        {% for author in dataset.ds_meta_data.authors %}
-                        <p class="p-0 m-0">
-                            {{ author.name }}
-                            {% if author.affiliation %}
-                            ({{ author.affiliation }})
-                            {% endif %}
-                            {% if author.orcid %}
-                            ({{ author.orcid }})
-                            {% endif %}
-                        </p>
-                        {% endfor %}
+                        {% if not dataset.is_anonymous %}
+                            {% for author in dataset.ds_meta_data.authors %}
+                                <p class="p-0 m-0">
+                                    {{ author.name }}
+                                    {% if author.affiliation %}
+                                        ({{ author.affiliation }})
+                                    {% endif %}
+                                    {% if author.orcid %}
+                                        ({{ author.orcid }})
+                                    {% endif %}
+                                </p>
+                            {% endfor %}
+                        {% else %}
+                            <p class="p-0 m-0">Anónimo</p>
+                        {% endif %}
                     </div>
 
 
@@ -494,4 +511,13 @@
     }
 </script>
 
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('dataset.scripts') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            feather.replace();
+        });
+    </script>
 {% endblock %}
