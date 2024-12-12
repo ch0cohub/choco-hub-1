@@ -1,73 +1,84 @@
 document.addEventListener('DOMContentLoaded', () => {
-    send_query(); // este es el que ya había, para buscar por cosas al clicar en los que están cargados
+  send_query(); // este es el que ya había, para buscar por cosas al clicar en los que están cargados
 });
 
 function send_query() {
 
 
-    document.getElementById('results').innerHTML = '';
-    document.getElementById("results_not_found").style.display = "none";
+  document.getElementById('results').innerHTML = '';
+  document.getElementById("results_not_found").style.display = "none";
 
-    const filters = document.querySelectorAll('#filters input, #filters select, #filters [type="radio"]');
+  const filters = document.querySelectorAll('#filters input, #filters select, #filters [type="radio"]');
 
-    filters.forEach(filter => {
-        filter.addEventListener('input', () => {
-            const csrfToken = document.getElementById('csrf_token').value;
+  filters.forEach(filter => {
+    filter.addEventListener('input', () => {
+      const csrfToken = document.getElementById('csrf_token').value;
 
-            const searchCriteria = {
-                csrf_token: csrfToken,
-                title: document.querySelector('#title').value,
-                tags_str: document.querySelector('#tags_str').value,
-                publication_type: document.querySelector('#publication_type').value,
-                sorting: document.querySelector('[name="sorting"]:checked').value,
-                author_name: document.querySelector('#author_name').value,
-            };
+      const searchCriteria = {
+        csrf_token: csrfToken,
+        title: document.querySelector('#title').value,
+        tags_str: document.querySelector('#tags_str').value,
+        publication_type: document.querySelector('#publication_type').value,
+        sorting: document.querySelector('[name="sorting"]:checked').value,
+        author_name: document.querySelector('#author_name').value,
+        uvl_validation: document.querySelector('#uvl_validation').checked,
+        num_authors: document.querySelector('#num_authors').value
+      };
 
-            console.log('criteria: ', searchCriteria);
+      fetch('/explore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(searchCriteria),
+      })
+        .then(response => {
+          return response.json()
+        })
+        .then(data => {
 
-            fetch('/explore', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(searchCriteria),
-            })
-                .then(response => {
-                  return response.json()
-                })
-                .then(data => {
+          document.getElementById('results').innerHTML = '';
 
-                    console.log('data', data);
-                    document.getElementById('results').innerHTML = '';
+          // results counter
+          const resultCount = data.length;
+          const resultText = resultCount === 1 ? 'dataset' : 'datasets';
+          document.getElementById('results_number').textContent = `${resultCount} ${resultText} found`;
 
-                    // results counter
-                    const resultCount = data.length;
-                    const resultText = resultCount === 1 ? 'dataset' : 'datasets';
-                    document.getElementById('results_number').textContent = `${resultCount} ${resultText} found`;
+          if (resultCount === 0) {
+            document.getElementById("results_not_found").style.display = "block";
+          } else {
+            document.getElementById("results_not_found").style.display = "none";
+          }
 
-                    if (resultCount === 0) {
-                        document.getElementById("results_not_found").style.display = "block";
-                    } else {
-                        document.getElementById("results_not_found").style.display = "none";
-                    }
+          const existingButtons = document.querySelectorAll('.btn-download-all');
+          existingButtons.forEach(button => button.remove());
 
-                    
-                  const downloadButton = document.createElement('button');
-                  downloadButton.className = 'btn btn-outline-primary btn-sm mb-3';
-                  downloadButton.textContent = 'Download All Datasets';
-                  downloadButton.addEventListener('click', () => {
-                    for (let i = 0; i < data.length; i++) {
-                      window.open(`/dataset/download/${data[i].id}`);
-                    }
-                  });
+          const downloadButton = document.createElement('button');
+          downloadButton.className = 'btn btn-primary btn-sm btn-narrow text-white btn-download-all';
+          downloadButton.textContent = 'Download All Datasets';
+          downloadButton.addEventListener('click', () => {
+            // para descargar los datasets, se hace un fetch a la ruta de descarga de cada dataset, se crea un elemento html <a> con el link de descarga y se hace click en él, y finalmente se elimina el elemento
+            for (let i = 0; i < data.length; i++) {
+              const url = `/dataset/download/${data[i].id}`;
+              fetch(url).then(response => response.blob()).then(blob => {
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = data[i].title + '.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+              });
+            }
+          })
+          document.getElementById('results').insertAdjacentElement('beforebegin', downloadButton);
 
-                  document.getElementById('results').insertAdjacentElement('beforebegin', downloadButton);
-                    
-                    
-                    data.forEach(dataset => {
-                        let card = document.createElement('div');
-                        card.className = 'col-12';
-                        card.innerHTML = `
+
+          data.forEach(dataset => {
+            let card = document.createElement('div');
+            card.className = 'col-12';
+            card.innerHTML = `
                             <div class="card">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center justify-content-between">
@@ -140,80 +151,88 @@ function send_query() {
                             </div>
                         `;
 
-                        document.getElementById('results').appendChild(card);
-                    });
-                });
+            document.getElementById('results').appendChild(card);
+          });
         });
     });
+  });
 }
 
 function formatDate(dateString) {
-    const options = {day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric'};
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', options);
+  const options = { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric' };
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', options);
 }
 
 function set_tag_as_query(tagName) {
-    clearFilters()
-    const tagInput = document.getElementById('tags_str');
-    tagInput.value = tagName.trim();
-    tagInput.dispatchEvent(new Event('input', {bubbles: true}));
+  clearFilters()
+  const tagInput = document.getElementById('tags_str');
+  tagInput.value = tagName.trim();
+  tagInput.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function set_publication_type_as_query(publicationType) {
-    clearFilters()
-    const publicationTypeSelect = document.getElementById('publication_type');
-    for (let i = 0; i < publicationTypeSelect.options.length; i++) {
-        if (publicationTypeSelect.options[i].text === publicationType.trim()) {
-            // Set the value of the select to the value of the matching option
-            publicationTypeSelect.value = publicationTypeSelect.options[i].value;
-            break;
-        }
+  clearFilters()
+  const publicationTypeSelect = document.getElementById('publication_type');
+  for (let i = 0; i < publicationTypeSelect.options.length; i++) {
+    if (publicationTypeSelect.options[i].text === publicationType.trim()) {
+      // Set the value of the select to the value of the matching option
+      publicationTypeSelect.value = publicationTypeSelect.options[i].value;
+      break;
+
     }
-    publicationTypeSelect.dispatchEvent(new Event('input', {bubbles: true}));
+  }
+  publicationTypeSelect.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 document.getElementById('clear-filters').addEventListener('click', clearFilters);
 
 function clearFilters() {
 
-    // Reset the search query
-    let titleInput = document.querySelector('#title');
-    titleInput.value = "";
-    // queryInput.dispatchEvent(new Event('input', {bubbles: true}));
+  // Reset the search query
+  let titleInput = document.querySelector('#title');
+  titleInput.value = "";
 
-    // Reset the publication type to its default value
-    let publicationTypeSelect = document.querySelector('#publication_type');
-    publicationTypeSelect.value = "any"; // replace "any" with whatever your default value is
-    // publicationTypeSelect.dispatchEvent(new Event('input', {bubbles: true}));
+  // Reset the publication type to its default value
+  let publicationTypeSelect = document.querySelector('#publication_type');
+  publicationTypeSelect.value = "any"; // replace "any" with whatever your default value is
 
-    // Reset the sorting option
-    let sortingOptions = document.querySelectorAll('[name="sorting"]');
-    sortingOptions.forEach(option => {
-        option.checked = option.value == "newest"; // replace "default" with whatever your default value is
-        // option.dispatchEvent(new Event('input', {bubbles: true}));
-    });
+  // Reset the sorting option
+  let sortingOptions = document.querySelectorAll('[name="sorting"]');
+  sortingOptions.forEach(option => {
+    option.checked = option.value == "newest"; // replace "default" with whatever your default value is
+  });
+
+  // Perform a new search with the reset filters
+  titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Reset the UVL validation checkbox
+    let uvlValidationCheckbox = document.querySelector('#uvl_validation');
+    uvlValidationCheckbox.checked = false;
+
+    // Reset the num authors input
+    let numAuthorsInput = document.querySelector('#num_authors');
+    numAuthorsInput.value = "any";
 
     // Perform a new search with the reset filters
-    titleInput.dispatchEvent(new Event('input', {bubbles: true}));
+    queryInput.dispatchEvent(new Event('input', {bubbles: true}));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    //let queryInput = document.querySelector('#query');
-    //queryInput.dispatchEvent(new Event('input', {bubbles: true}));
-    let urlParams = new URLSearchParams(window.location.search);
-    let titleParam = urlParams.get('query');
+  let urlParams = new URLSearchParams(window.location.search);
+  let titleParam = urlParams.get('query');
 
-    if (titleParam && titleParam.trim() !== '') {
+  if (titleParam && titleParam.trim() !== '') {
 
-        const titleInput = document.getElementById('title');
-        titleInput.value = titleParam
-        titleInput.dispatchEvent(new Event('input', {bubbles: true}));
+    const titleInput = document.getElementById('title');
+    titleInput.value = titleParam
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    } else {
-        const titleInput = document.getElementById('title');
-        titleInput.dispatchEvent(new Event('input', {bubbles: true}));
-    }
+  } else {
+    const titleInput = document.getElementById('title');
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 });
+
 

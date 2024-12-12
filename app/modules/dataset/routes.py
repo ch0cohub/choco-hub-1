@@ -16,7 +16,8 @@ from flask import (
     make_response,
     abort,
     url_for,
-    flash
+    flash,
+    send_file,
 )
 from flask_login import login_required, current_user
 
@@ -35,7 +36,11 @@ from app.modules.dataset.services import (
     DOIMappingService
 )
 from app.modules.zenodo.services import ZenodoService
+from app.modules.community.models import Community
 from app import db
+from app.modules.community.services import CommunityService
+
+from app.modules.fakenodo.services import FakenodoService
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +48,10 @@ logger = logging.getLogger(__name__)
 dataset_service = DataSetService()
 author_service = AuthorService()
 dsmetadata_service = DSMetaDataService()
-zenodo_service = ZenodoService()
+fakenodoService = FakenodoService()
 doi_mapping_service = DOIMappingService()
 ds_view_record_service = DSViewRecordService()
+community_service = CommunityService()
 
 
 @dataset_bp.route("/dataset/upload", methods=["GET", "POST"])
@@ -101,7 +107,7 @@ def create_dataset():
         # send dataset as deposition to Zenodo
         data = {}
         try:
-            zenodo_response_json = zenodo_service.create_new_deposition(dataset)
+            zenodo_response_json = fakenodoService.create_new_deposition(dataset)
             response_data = json.dumps(zenodo_response_json)
             data = json.loads(response_data)
         except Exception as exc:
@@ -118,16 +124,16 @@ def create_dataset():
             try:
                 # iterate for each feature model (one feature model = one request to Zenodo)
                 for feature_model in dataset.feature_models:
-                    zenodo_service.upload_file(dataset, deposition_id, feature_model)
+                    fakenodoService.upload_file(dataset, deposition_id, feature_model)
 
                 # publish deposition
-                zenodo_service.publish_deposition(deposition_id)
+                fakenodoService.publish_deposition(deposition_id)
 
                 # update DOI
-                deposition_doi = zenodo_service.get_doi(deposition_id)
+                deposition_doi = fakenodoService.get_doi(deposition_id)
                 dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
             except Exception as e:
-                msg = f"it has not been possible upload feature models in Zenodo and update the DOI: {e}"
+                msg = f"it has not been possible upload feature models in Fakenodo and update the DOI: {e}"
                 return jsonify({"message": msg}), 200
 
         # Delete temp folder
@@ -144,10 +150,14 @@ def create_dataset():
 @dataset_bp.route("/dataset/list", methods=["GET", "POST"])
 @login_required
 def list_dataset():
+    owned_communities = list(current_user.owned_communities)  
+    joined_communities = list(current_user.joined_communities)  
+    all_communities = owned_communities + joined_communities  
     return render_template(
         "dataset/list_datasets.html",
         datasets=dataset_service.get_synchronized(current_user.id),
         local_datasets=dataset_service.get_unsynchronized(current_user.id),
+        communities=all_communities,
     )
 
 
@@ -212,11 +222,12 @@ def delete():
 @dataset_bp.route("/dataset/download/<int:dataset_id>", methods=["GET"])
 def download_dataset(dataset_id):
     dataset = dataset_service.get_or_404(dataset_id)
+    dataset_title = dataset.ds_meta_data.title
 
     file_path = f"uploads/user_{dataset.user_id}/dataset_{dataset.id}/"
 
     temp_dir = tempfile.mkdtemp()
-    zip_path = os.path.join(temp_dir, f"dataset_{dataset_id}.zip")
+    zip_path = os.path.join(temp_dir, f"{dataset_title}_uvl.zip")
 
     with ZipFile(zip_path, "w") as zipf:
         for subdir, dirs, files in os.walk(file_path):
@@ -241,7 +252,7 @@ def download_dataset(dataset_id):
         resp = make_response(
             send_from_directory(
                 temp_dir,
-                f"dataset_{dataset_id}.zip",
+                f"{dataset_title}_uvl.zip",
                 as_attachment=True,
                 mimetype="application/zip",
             )
@@ -250,7 +261,7 @@ def download_dataset(dataset_id):
     else:
         resp = send_from_directory(
             temp_dir,
-            f"dataset_{dataset_id}.zip",
+            f"{dataset_title}_uvl.zip",
             as_attachment=True,
             mimetype="application/zip",
         )
@@ -322,3 +333,52 @@ def toggle_anonymity(dataset_id):
     dataset.is_anonymous = not dataset.is_anonymous
     db.session.commit()
     return redirect(url_for('dataset.view_dataset', dataset_id=dataset_id))
+
+
+@dataset_bp.route("/dataset/download/all", methods=["GET"])
+def download_all_dataset():
+      
+    zip_path, zip_filename = dataset_service.generate_datasets_and_name_zip()
+    return send_file(zip_path, as_attachment=True, download_name=zip_filename)
+
+@dataset_bp.route('/dataset/update_community', methods=['POST'])
+@login_required
+def update_dataset_community():
+    data = request.get_json()  # Captura los datos enviados como JSON
+    dataset_id = data.get('dataset_id')
+    community_id = data.get('community_id')
+    
+    if not dataset_id or not community_id:
+        return jsonify({'error': 'Dataset ID and Community ID are required'}), 400
+
+    dataset = dataset_service.get_or_404(dataset_id)
+    community = community_service.get_or_404(community_id)
+    
+    if not dataset or not community:
+        return jsonify({'error': 'Dataset or Community not found'}), 404
+
+    dataset.community_id = community.id
+    db.session.commit()
+
+    return jsonify({'message': 'Dataset updated successfully'})
+
+@dataset_bp.route('/dataset/remove_community', methods=['POST'])
+@login_required
+def remove_dataset_community():
+    dataset_id = request.json.get('dataset_id')
+    community_id = request.json.get('community_id')
+    
+    dataset = dataset_service.get_or_404(dataset_id)
+    community = community_service.get_or_404(community_id)
+    
+    if not dataset or not community:
+        return jsonify({'error': 'Dataset or Community not found'}), 404
+    
+    if dataset.community_id == community.id:
+        dataset.community_id = None
+        db.session.commit()
+        return jsonify({'message': 'Community association removed successfully'})
+    
+    return jsonify({'error': 'Dataset is not associated with the community'}), 400
+
+
