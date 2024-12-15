@@ -1,5 +1,13 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, FieldList, FormField, SubmitField, TextAreaField, BooleanField
+from wtforms import (
+    StringField,
+    SelectField,
+    FieldList,
+    FormField,
+    SubmitField,
+    TextAreaField,
+    BooleanField,
+)
 from wtforms.validators import DataRequired, URL, Optional, ValidationError
 
 from app.modules.dataset.models import PublicationType
@@ -28,7 +36,9 @@ class FeatureModelForm(FlaskForm):
     desc = TextAreaField("Description", validators=[Optional()])
     publication_type = SelectField(
         "Publication type",
-        choices=[(pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType],
+        choices=[
+            (pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType
+        ],
         validators=[Optional()],
     )
     publication_doi = StringField("Publication DOI", validators=[Optional(), URL()])
@@ -59,7 +69,9 @@ class DataSetForm(FlaskForm):
     desc = TextAreaField("Description", validators=[DataRequired()])
     publication_type = SelectField(
         "Publication type",
-        choices=[(pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType],
+        choices=[
+            (pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType
+        ],
         validators=[DataRequired()],
     )
     publication_doi = StringField("Publication DOI", validators=[Optional(), URL()])
@@ -73,7 +85,9 @@ class DataSetForm(FlaskForm):
 
     def get_dsmetadata(self):
 
-        publication_type_converted = self.convert_publication_type(self.publication_type.data)
+        publication_type_converted = self.convert_publication_type(
+            self.publication_type.data
+        )
 
         return {
             "title": self.title.data,

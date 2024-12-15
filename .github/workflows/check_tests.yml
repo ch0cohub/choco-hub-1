@@ -7,6 +7,7 @@ on:
  
 jobs: 
   testing:
+    if: ${{ github.repository == 'ch0cohub/choco-hub-1' }}
     name: Run Tests
     runs-on: ubuntu-latest
 
@@ -45,4 +46,4 @@ jobs:
             MARIADB_USER: uvlhub_user
             MARIADB_PASSWORD: uvlhub_password
         run: |
-          rosemary test
+          pytest app/modules/ --ignore-glob='*selenium*'
