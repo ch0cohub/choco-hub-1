@@ -91,7 +91,7 @@ def create_dataset():
                 form=form,
                 current_user=current_user,
                 is_anonymous=is_anonymous,
-                authors=authors_data  # Pasar los datos de autores al servicio
+                # authors=authors_data  # Pasar los datos de autores al servicio
             )
             logger.info(f"Created dataset: {dataset}")
             dataset_service.move_feature_models(dataset)
@@ -332,17 +332,6 @@ def get_unsynchronized_dataset(dataset_id):
     return render_template("dataset/view_dataset.html", dataset=dataset)
 
 
-@dataset_bp.route("/dataset/<int:dataset_id>/toggle_anonymity", methods=["POST"])
-@login_required
-def toggle_anonymity(dataset_id):
-    dataset = DataSet.query.get_or_404(dataset_id)
-    if dataset.owner_id != current_user.id:
-        abort(403)
-    dataset.is_anonymous = not dataset.is_anonymous
-    db.session.commit()
-    return redirect(url_for('dataset.view_dataset', dataset_id=dataset_id))
-
-
 @dataset_bp.route("/dataset/download/all", methods=["GET"])
 def download_all_dataset():
 
@@ -390,3 +379,15 @@ def remove_dataset_community():
         return jsonify({"message": "Community association removed successfully"})
 
     return jsonify({"error": "Dataset is not associated with the community"}), 400
+
+@dataset_bp.route("/dataset/<int:dataset_id>/toggle_anonymity", methods=["POST"])
+@login_required
+def toggle_anonymity(dataset_id):
+    try:
+        dataset = dataset_service.toggle_anonymity(dataset_id, current_user)
+        return jsonify({"message": "Dataset anonymity toggled successfully", "is_anonymous": dataset.is_anonymous}), 200
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
+    except Exception as e:
+        logger.exception(f"Exception while toggling dataset anonymity: {e}")
+        return jsonify({"error": "An error occurred while toggling dataset anonymity"}), 500

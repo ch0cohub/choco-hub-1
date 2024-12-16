@@ -109,7 +109,8 @@ class DataSetService(BaseService):
     def get_dataset_name(self, dataset_id: int) -> str:
         return self.repository.get_dataset_name(dataset_id)
 
-    def create_from_form(self, form, current_user) -> DataSet:
+    def create_from_form(self, form, current_user,is_anonymous) -> DataSet:
+        is_anonymous = form.is_anonymous.data
         main_author = {
             "name": f"{current_user.profile.surname}, {current_user.profile.name}",
             "affiliation": current_user.profile.affiliation,
@@ -118,14 +119,15 @@ class DataSetService(BaseService):
         try:
             logger.info(f"Creating dsmetadata...: {form.get_dsmetadata()}")
             dsmetadata = self.dsmetadata_repository.create(**form.get_dsmetadata())
-            for author_data in [main_author] + form.get_authors():
-                author = self.author_repository.create(
-                    commit=False, ds_meta_data_id=dsmetadata.id, **author_data
-                )
-                dsmetadata.authors.append(author)
+            if not is_anonymous:
+                for author_data in [main_author] + form.get_authors():
+                    author = self.author_repository.create(
+                        commit=False, ds_meta_data_id=dsmetadata.id, **author_data
+                    )
+                    dsmetadata.authors.append(author)
 
             dataset = self.create(
-                commit=False, user_id=current_user.id, ds_meta_data_id=dsmetadata.id
+                commit=False, user_id=current_user.id, ds_meta_data_id=dsmetadata.id, is_anonymous=is_anonymous
             )
 
             for feature_model in form.feature_models:
@@ -133,11 +135,12 @@ class DataSetService(BaseService):
                 fmmetadata = self.fmmetadata_repository.create(
                     commit=False, **feature_model.get_fmmetadata()
                 )
-                for author_data in feature_model.get_authors():
-                    author = self.author_repository.create(
-                        commit=False, fm_meta_data_id=fmmetadata.id, **author_data
-                    )
-                    fmmetadata.authors.append(author)
+                if not is_anonymous:
+                    for author_data in feature_model.get_authors():
+                        author = self.author_repository.create(
+                            commit=False, fm_meta_data_id=fmmetadata.id, **author_data
+                        )
+                        fmmetadata.authors.append(author)
 
                 fm = self.feature_model_repository.create(commit=False, data_set_id=dataset.id, fm_meta_data_id=fmmetadata.id)
 
@@ -154,8 +157,9 @@ class DataSetService(BaseService):
                 )
                 fm.files.append(file)
             
-            if commit:
-                self.repository.session.commit()
+            # if is_anonymous:
+            #     dataset.user_id = None
+            self.repository.session.commit()
             
         except Exception as exc:
             logger.info(f"Exception creating dataset from form...: {exc}")
@@ -199,6 +203,37 @@ class DataSetService(BaseService):
                         )
 
         return str(zip_path), zip_filename
+    
+    def toggle_anonymity(self, dataset_id: int, current_user) -> DataSet:
+        dataset = self.repository.get_or_404(dataset_id)
+        if dataset.user_id != current_user.id:
+            raise PermissionError("You do not have permission to modify this dataset.")
+
+        dataset.is_anonymous = not dataset.is_anonymous
+        if not dataset.is_anonymous:
+            # Reasignar el user_id y actualizar los autores si se hace público
+            dataset.user_id = current_user.id
+            main_author = {
+                "name": f"{current_user.profile.surname}, {current_user.profile.name}",
+                "affiliation": current_user.profile.affiliation,
+                "orcid": current_user.profile.orcid,
+            }
+            # Eliminar autores anónimos existentes
+            for author in dataset.ds_meta_data.authors:
+                self.author_repository.delete(author)
+            # Agregar el autor principal
+            author = self.author_repository.create(
+                commit=False, ds_meta_data_id=dataset.ds_meta_data.id, **main_author
+            )
+            dataset.ds_meta_data.authors.append(author)
+        else:
+            # Anonimizar el user_id y eliminar los autores si se hace anónimo
+            dataset.user_id = None
+            for author in dataset.ds_meta_data.authors:
+                self.author_repository.delete(author)
+
+        self.repository.session.commit()
+        return dataset
 
 
 class AuthorService(BaseService):

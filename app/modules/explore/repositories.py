@@ -43,7 +43,7 @@ class ExploreRepository(BaseRepository):
 
         datasets = (
             self.model.query.join(DataSet.ds_meta_data)
-            .join(DSMetaData.authors)
+            .outerjoin(DSMetaData.authors)
             .join(DataSet.feature_models)
             .join(FeatureModel.fm_meta_data)
             .filter(or_(*filters))
@@ -105,7 +105,7 @@ class ExploreRepository(BaseRepository):
                 db.session.query(
                     DSMetaData.id, func.count(Author.id).label("author_count")
                 )
-                .join(DSMetaData.authors)
+                .outerjoin(DSMetaData.authors)
                 .group_by(DSMetaData.id)
                 .subquery()
             )

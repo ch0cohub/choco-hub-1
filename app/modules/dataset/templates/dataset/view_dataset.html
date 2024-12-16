@@ -41,18 +41,15 @@
                         <span class="badge bg-secondary">{{ dataset.get_cleaned_publication_type() }}</span>
                     </div>
                     <!-- Botón para cambiar el estado de anonimato (Paso 6) -->
-                    {% if current_user.is_authenticated and dataset.owner_id == current_user.id %}
-                        <form action="{{ url_for('dataset.toggle_anonymity', dataset_id=dataset.id) }}" method="post">
-                            {{ csrf_field() }}
-                            <button type="submit" class="btn btn-primary btn-sm">
-                                {% if dataset.is_anonymous %}
-                                    Make authors metadata public                                
-                                {% else %}
-                                    Anonymize authors metadata
-                                {% endif %}
-                            </button>
-                        </form>
-                    {% endif %}
+                    {% if current_user.is_authenticated and dataset.user_id == current_user.id  and dataset.is_anonymous%}
+                    <form action="{{ url_for('dataset.toggle_anonymity', dataset_id=dataset.id) }}" method="post">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            {% if dataset.is_anonymous %}
+                                Make authors metadata public                                
+                            {% endif %}
+                        </button>
+                    </form>
+                {% endif %}
                 </div>
                 <p class="text-secondary">{{ dataset.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
 
@@ -76,9 +73,13 @@
                         </span>
                     </div>
                     <div class="col-md-8 col-12">
-                        <a href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
-                            {{ dataset.user.profile.surname }}, {{ dataset.user.profile.name }}
-                        </a>
+                        {% if dataset.is_anonymous %}
+                            <p class="p-0 m-0">Anónimo</p>
+                        {% else %}
+                            <a href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
+                                {{ dataset.user.profile.surname }}, {{ dataset.user.profile.name }}
+                            </a>
+                        {% endif %}
                     </div>
                 </div>                
 
@@ -566,6 +567,34 @@
             console.error('Failed to copy text: ', err);
         });
     }
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[action*="toggle_anonymity"]').forEach(form => {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Success: ' + data.message);
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+    });
 </script>
 
 {% endblock %}
