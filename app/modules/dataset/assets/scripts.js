@@ -84,7 +84,7 @@ var currentId = 0;
 
         document.getElementById('add_author').addEventListener('click', function () {
             let authors = document.getElementById('authors');
-            let newAuthor = createAuthorBlock(amount_authors++, "");
+            let newAuthor = createAuthorBlock(1+amount_authors++, "");
             authors.appendChild(newAuthor);
         });
 

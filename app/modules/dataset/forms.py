@@ -111,7 +111,7 @@ class DataSetForm(FlaskForm):
         return [fm.get_feature_model() for fm in self.feature_models]
 
     def validate_authors(self, field):
-        if not self.is_anonymous.data:
+        if not self.is_anonymous:
             for author in field.entries:
-                if not author.name.data or not author.name.data.strip():
+                if not author.name or not author.name.strip():
                     raise ValidationError("El nombre del autor no puede estar vacío")

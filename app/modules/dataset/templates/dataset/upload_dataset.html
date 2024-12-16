@@ -132,36 +132,6 @@
 
                         <div class="row" style="padding-left: 2rem">
 
-                            <!-- Campo de Author name -->
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author name</label>
-                                <input class="form-control"
-                                       name="author_name"
-                                       id="author_name"
-                                       readonly
-                                       value="{{ current_user.profile.surname }}, {{ current_user.profile.name }}">
-                            </div>
-
-                            <!-- Campo de Author affiliation -->
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author affiliation</label>
-                                <input class="form-control"
-                                       name="author_affiliation"
-                                       id="author_affiliation"
-                                       readonly
-                                       value="{{ current_user.profile.affiliation }}">
-                            </div>
-
-                            <!-- Campo de Author ORCID -->
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author ORCID</label>
-                                <input class="form-control"
-                                       name="author_orcid"
-                                       id="author_orcid"
-                                       readonly
-                                       value="{{ current_user.profile.orcid }}">
-                            </div>
-
                             <div class="col-12">
 
                                 <div class="mb-3">
@@ -174,7 +144,7 @@
                                         >
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.name.label(class="form-label") }}
-                                                {{ subform.form.name(class="form-control", disabled=loop.first) }}
+                                                {{ subform.form.name(class="form-control") }}
                                                 {% for error in subform.name.errors %}
                                                     <span style="color: red;">{{ error }}</span>
                                                 {% endfor %}
@@ -182,7 +152,7 @@
 
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.affiliation.label(class="form-label") }}
-                                                {{ subform.form.affiliation(class="form-control", disabled=loop.first) }}
+                                                {{ subform.form.affiliation(class="form-control") }}
                                                 {% for error in subform.name.errors %}
                                                     <span style="color: red;">{{ error }}</span>
                                                 {% endfor %}
@@ -190,7 +160,7 @@
 
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.orcid.label(class="form-label") }}
-                                                {{ subform.orcid(class="form-control", disabled=loop.first) }}
+                                                {{ subform.orcid(class="form-control") }}
                                                 {% for error in subform.orcid.errors %}
                                                     <span style="color: red;">{{ error }}</span>
                                                 {% endfor %}
@@ -548,23 +518,16 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
     var anonymousCheckbox = document.getElementById('anonymousCheckbox');
-    var authorNameField = document.getElementById('author_name');
-    var authorAffiliationField = document.getElementById('author_affiliation');
-    var authorOrcidField = document.getElementById('author_orcid');
-
-    // Inicialmente, los campos están habilitados si el checkbox no está seleccionado
-    if (!anonymousCheckbox.checked) {
-        authorNameField.readOnly = false;
-        authorAffiliationField.readOnly = false;
-        authorOrcidField.readOnly = false;
-    }
+    var authorNameField = document.getElementById('authors-0-name');
+    var authorAffiliationField = document.getElementById('authors-0-affiliation');
+    var authorOrcidField = document.getElementById('authors-0-orcid');
 
     anonymousCheckbox.addEventListener('change', function() {
         var isAnonymous = this.checked;
 
-        authorNameField.readOnly = isAnonymous;
-        authorAffiliationField.readOnly = isAnonymous;
-        authorOrcidField.readOnly = isAnonymous;
+        authorNameField.value = '{{ current_user.profile.surname }}, {{ current_user.profile.name }}';
+        authorAffiliationField.value = '{{ current_user.profile.affiliation }}';
+        authorOrcidField.value = '{{ current_user.profile.orcid }}';
 
         if (isAnonymous) {
             authorNameField.value = '';

@@ -601,6 +601,8 @@
 
 {% block scripts %}
     <script src="{{ url_for('dataset.scripts') }}"></script>
+    <script src="{{ url_for('zenodo.scripts') }}"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             feather.replace();
