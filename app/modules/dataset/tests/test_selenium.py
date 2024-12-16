@@ -66,8 +66,6 @@ def test_upload_dataset():
         add_author_button = driver.find_element(By.ID, "add_author")
         add_author_button.send_keys(Keys.RETURN)
         wait_for_page_to_load(driver)
-        add_author_button.send_keys(Keys.RETURN)
-        wait_for_page_to_load(driver)
 
         name_field0 = driver.find_element(By.NAME, "authors-0-name")
         name_field0.send_keys("Author0")
@@ -102,10 +100,10 @@ def test_upload_dataset():
         add_author_uvl_button.send_keys(Keys.RETURN)
         wait_for_page_to_load(driver)
 
-        name_field = driver.find_element(By.NAME, "feature_models-0-authors-2-name")
+        name_field = driver.find_element(By.NAME, "feature_models-0-authors-1-name")
         name_field.send_keys("Author3")
         affiliation_field = driver.find_element(
-            By.NAME, "feature_models-0-authors-2-affiliation"
+            By.NAME, "feature_models-0-authors-1-affiliation"
         )
         affiliation_field.send_keys("Club3")
 
@@ -168,25 +166,6 @@ def test_upload_anonymous_dataset():
         tags_field = driver.find_element(By.NAME, "tags")
         tags_field.send_keys("tag1,tag2")
 
-        # Add two authors and fill
-        # add_author_button = driver.find_element(By.ID, "add_author")
-        # add_author_button.send_keys(Keys.RETURN)
-        # wait_for_page_to_load(driver)
-        # add_author_button.send_keys(Keys.RETURN)
-        # wait_for_page_to_load(driver)
-
-        # name_field0 = driver.find_element(By.NAME, "authors-0-name")
-        # name_field0.send_keys("Author0")
-        # affiliation_field0 = driver.find_element(By.NAME, "authors-0-affiliation")
-        # affiliation_field0.send_keys("Club0")
-        # orcid_field0 = driver.find_element(By.NAME, "authors-0-orcid")
-        # orcid_field0.send_keys("0000-0000-0000-0000")
-
-        # name_field1 = driver.find_element(By.NAME, "authors-1-name")
-        # name_field1.send_keys("Author1")
-        # affiliation_field1 = driver.find_element(By.NAME, "authors-1-affiliation")
-        # affiliation_field1.send_keys("Club1")
-
         # Obtén las rutas absolutas de los archivos
         file1_path = os.path.abspath("app/modules/dataset/uvl_examples/file1.uvl")
         file2_path = os.path.abspath("app/modules/dataset/uvl_examples/file2.uvl")
@@ -201,23 +180,9 @@ def test_upload_anonymous_dataset():
         dropzone.send_keys(file2_path)
         wait_for_page_to_load(driver)
 
-        # # Add authors in UVL models
-        # show_button = driver.find_element(By.ID, "0_button")
-        # show_button.send_keys(Keys.RETURN)
-        # add_author_uvl_button = driver.find_element(By.ID, "0_form_authors_button")
-        # add_author_uvl_button.send_keys(Keys.RETURN)
-        # wait_for_page_to_load(driver)
-
-        # name_field = driver.find_element(By.NAME, "feature_models-0-authors-2-name")
-        # name_field.send_keys("Author3")
-        # affiliation_field = driver.find_element(
-        #     By.NAME, "feature_models-0-authors-2-affiliation"
-        # )
-        # affiliation_field.send_keys("Club3")
-
         # Check Anonymous box
         anonymous_check = driver.find_element(By.ID, "anonymousCheckbox")
-        check.send_keys(Keys.SPACE)
+        anonymous_check.send_keys(Keys.SPACE)
         wait_for_page_to_load(driver)
         
         # Check I agree and send form
