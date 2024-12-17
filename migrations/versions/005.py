@@ -33,9 +33,6 @@ def upgrade():
         sa.Column("value", sa.Integer(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("data_set_id", sa.Integer(), nullable=False),
-        sa.CheckConstraint(
-            "value >= 1 AND value <= 5", name="check_value_range_dataset"
-        ),
         sa.ForeignKeyConstraint(
             ["data_set_id"],
             ["data_set.id"],
@@ -52,7 +49,6 @@ def upgrade():
         sa.Column("value", sa.Integer(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("feature_model_id", sa.Integer(), nullable=True),
-        sa.CheckConstraint("value >= 1 AND value <= 5", name="check_value_range_model"),
         sa.ForeignKeyConstraint(
             ["feature_model_id"],
             ["feature_model.id"],
