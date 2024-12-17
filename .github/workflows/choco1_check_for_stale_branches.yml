@@ -1,4 +1,4 @@
-name: Open Issue for Stale Branches with Week in Time
+name: Open Issue for Stale Branches
 
 on:
   schedule:
