@@ -162,12 +162,12 @@
                     </div>
                     <div class="col-md-8 col-12">
                         <!-- Like Button -->
-                        <button onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', 1)" class="btn btn-primary btn-sm">
+                        <button id="like" onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', 1)" class="btn btn-primary btn-sm">
                             Like
                         </button>
                         
                         <!-- Dislike Button -->
-                        <button onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', -1)" class="btn btn-danger btn-sm">
+                        <button id="dislike" onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', -1)" class="btn btn-danger btn-sm">
                             Dislike
                         </button>
                 
