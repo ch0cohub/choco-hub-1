@@ -1,4 +1,7 @@
 import random
+from app.modules.auth.models import User
+from app.modules.dataset.models import DSMetaData, DataSet, PublicationType
+from app.modules.profile.models import UserProfile
 from locust import HttpUser, TaskSet, task
 from core.locust.common import get_csrf_token, fake
 from core.environment.host import get_host_for_locust_testing
@@ -10,7 +13,7 @@ class DatasetBehavior(TaskSet):
         self.dataset()
         self.signupForRating()
         self.loginForRating()
-
+        
     def signupForRating(self):
         response = self.client.get("/signup")
         csrf_token = get_csrf_token(response)
@@ -63,7 +66,7 @@ class DatasetBehavior(TaskSet):
     @task
     def like_dataset(self):
         # Simulating dataset liking by sending random valid values
-        dataset_id = 44  # Simulate a dataset ID range
+        dataset_id = 50  # Simulate a dataset ID range
         value = random.choice([1, -1])  # Simulate liking or disliking
         headers = {"X-CSRFToken": self.csrf_token} if hasattr(self, "csrf_token") else {}
 
