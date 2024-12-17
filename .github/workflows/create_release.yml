@@ -3,8 +3,8 @@ name: Release Workflow
 # Se activa automáticamente al hacer push de un tag o manualmente desde la UI de Actions.
 on:
   push:
-    tags:
-      - "v*"  # Trigger solo con tags de versión
+    branches:
+      - main  # Trigger al hacer push a main
   workflow_dispatch:  # Habilita ejecución manual
 
 jobs:
