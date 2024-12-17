@@ -67,8 +67,8 @@ class DatasetBehavior(TaskSet):
     @task
     def like_dataset(self):
         # Simulating dataset liking by sending random valid values
-        dataset = DataSet.query.first()
-        dataset_id = dataset.id  # IDs de prueba# Simulate a dataset ID range
+        #dataset = DataSet.query.first()
+        dataset_id = 1  # IDs de prueba# Simulate a dataset ID range
         value = random.choice([1, -1])  # Simulate liking or disliking
         headers = (
             {"X-CSRFToken": self.csrf_token} if hasattr(self, "csrf_token") else {}
