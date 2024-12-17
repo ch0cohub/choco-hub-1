@@ -104,16 +104,20 @@ function send_query() {
 
                                     <div class="row mb-2">
 
-                                        <div class="col-md-4 col-12">
-                                            <span class=" text-secondary">
-                                                Authors
-                                            </span>
-                                        </div>
-                                        <div class="col-md-8 col-12">
-                                            ${dataset.authors.map(author => `
-                                                <p class="p-0 m-0">${author.name}${author.affiliation ? ` (${author.affiliation})` : ''}${author.orcid ? ` (${author.orcid})` : ''}</p>
-                                            `).join('')}
-                                        </div>
+                                      <div class="col-md-4 col-12">
+                                          <span class="text-secondary">
+                                              Authors
+                                          </span>
+                                      </div>
+                                      <div class="col-md-8 col-12">
+                                        ${dataset.is_anonymous ? `
+                                            <p class="p-0 m-0">Anónimo</p>
+                                        ` : dataset.authors && dataset.authors.length > 0 ? dataset.authors.map(author => `
+                                            <p class="p-0 m-0">${author.name}${author.affiliation ? ` (${author.affiliation})` : ''}${author.orcid ? ` (${author.orcid})` : ''}</p>
+                                        `).join('') : `
+                                            <p class="p-0 m-0">No authors available</p>
+                                        `}
+                                      </div>
 
                                     </div>
 

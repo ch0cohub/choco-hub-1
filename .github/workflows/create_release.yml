@@ -1,9 +1,11 @@
 name: Release Workflow
 
+# Se activa automáticamente al hacer push de un tag o manualmente desde la UI de Actions.
 on:
   push:
-    tags:
-      - "v*"  # Trigger only on version tags
+    branches:
+      - main  # Trigger al hacer push a main
+  workflow_dispatch:  # Habilita ejecución manual
 
 jobs:
   release:
@@ -15,26 +17,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Validate Tag Format
+        id: validate_tag
+        run: |
+          current_tag=$(git describe --tags --abbrev=0)
+          if [[ ! $current_tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: $current_tag"
+            exit 1
+          fi
+
       - name: Check if Major or Minor Version
         id: check_version
         run: |
-            # Extract the current and previous tags
-            current_tag=$(git describe --tags --abbrev=0)
-            previous_tag=$(git describe --tags --abbrev=0 HEAD^ || echo "v0.0.0")
+          current_tag=$(git describe --tags --abbrev=0)
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ || echo "v0.0.0")
 
-            # Get the major and minor versions
-            current_major=$(echo $current_tag | cut -d '.' -f 1 | tr -d 'v')
-            previous_major=$(echo $previous_tag | cut -d '.' -f 1 | tr -d 'v')
+          current_major=$(echo $current_tag | cut -d '.' -f 1 | tr -d 'v')
+          previous_major=$(echo $previous_tag | cut -d '.' -f 1 | tr -d 'v')
 
-            current_minor=$(echo $current_tag | cut -d '.' -f 2)
-            previous_minor=$(echo $previous_tag | cut -d '.' -f 2)
+          current_minor=$(echo $current_tag | cut -d '.' -f 2)
+          previous_minor=$(echo $previous_tag | cut -d '.' -f 2)
 
-            # Check if the major or minor version incremented
-            if [[ "$current_major" -gt "$previous_major" ]] || [[ "$current_minor" -gt "$previous_minor" ]]; then
-              echo "is_release=true" >> $GITHUB_ENV
-            else
-              echo "is_release=false" >> $GITHUB_ENV
-            fi
+          if [[ "$current_major" -gt "$previous_major" ]] || [[ "$current_minor" -gt "$previous_minor" ]]; then
+            echo "is_release=true" >> $GITHUB_ENV
+          else
+            echo "is_release=false" >> $GITHUB_ENV
+          fi
 
       - name: Stop if not Major or Minor Version
         if: env.is_release != 'true'
@@ -42,27 +50,20 @@ jobs:
           echo "This is not a major or minor version. Skipping release."
           exit 0
 
-
       - name: Generate Changelog
         id: changelog
         run: |
-          # Extract the current tag
           current_tag=$(git describe --tags --abbrev=0)
-
-          # Find the previous tag
           previous_tag=$(git describe --tags --abbrev=0 HEAD^ || echo "")
 
-          # Generate changelog
           if [ -z "$previous_tag" ]; then
-            changelog=$(git log --pretty=format:"- %s")
+            changelog=$(git log --pretty=format:"- %s (%an)")
           else
-            changelog=$(git log $previous_tag..$current_tag --pretty=format:"- %s")
+            changelog=$(git log $previous_tag..$current_tag --pretty=format:"- %s (%an)")
           fi
 
           echo "Changelog:"
           echo "$changelog"
-
-          # Save changelog for use in release
           echo "changelog=$changelog" >> $GITHUB_ENV
 
       - name: Create GitHub Release
@@ -73,7 +74,3 @@ jobs:
           body: ${{ env.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          
-#Funcionamiento:
-#Cada vez que se crea un tag, verifica si es un cambio major
-#caso afirmativo crea una release y un changelog

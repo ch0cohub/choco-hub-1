@@ -3,34 +3,42 @@ from app.modules.auth.models import User
 from app.modules.profile.models import UserProfile
 import pytest
 from app import create_app
-from app.modules.dataset.models import (
-    DSMetaData,
-    DataSet,
-    DatasetReview,
-    PublicationType,
-)
+from app.modules.dataset.forms import AuthorForm, DataSetForm, FeatureModelForm
+from app.modules.dataset.models import DSMetaData, DataSet, DatasetReview, PublicationType
+
 from app.modules.dataset.services import DataSetService
 from pathlib import Path
 import zipfile
 from datetime import datetime
 from app import db
 from app.modules.featuremodel.models import FMMetaData, FeatureModel
+from app.modules.profile.models import UserProfile
+from app.modules.auth.models import User
 
 
 @pytest.fixture(scope="module")
 def test_client(test_client):
     with test_client.application.app_context():
-        dsmetadata = DSMetaData(
-            id=1,
-            title="Test Dataset",
-            description="Test Description",
-            publication_type=PublicationType.JOURNAL_ARTICLE,
-            dataset_doi="10.1234/testdataset",
-        )
-        db.session.add(dsmetadata)
+        for i in range (1,8):
+            dsmetadata = DSMetaData(
+                id=i,
+                title=f"Test Dataset {i}",
+                description=f"Test Description {i}",
+                publication_type=PublicationType.JOURNAL_ARTICLE,
+                dataset_doi=f"10.1234/testdataset{i}",
+            )
+            db.session.add(dsmetadata)
 
-        dataset = DataSet(id=1, user_id=1, ds_meta_data_id=dsmetadata.id)
+        dataset = DataSet(id=1, user_id=1, ds_meta_data_id=dsmetadata.id, is_anonymous=False)
         db.session.add(dataset)
+        dataset = DataSet(id=2, user_id=1, ds_meta_data_id=7, is_anonymous=True)
+        db.session.add(dataset)
+        
+        user_test = User(email="user@example.com", password="test1234")
+
+        UserProfile(name="Name", surname="Surname", is_verified=True, user=user_test)
+
+        db.session.add(user_test)
 
         db.session.commit()
 
@@ -42,6 +50,85 @@ def dataset_service(test_client):
     service = DataSetService()
     return service
 
+
+
+def test_upload_dataset(test_client, dataset_service):
+    initial_datasets_count = dataset_service.count_synchronized_datasets()
+    initial_dsmetadata_count = dataset_service.count_dsmetadata()
+    dataset={
+        "user_id":1,
+        "ds_meta_data_id":2,
+        "is_anonymous":False,
+    }
+    test_dataset = dataset_service.repository.create(**dataset)
+    dataset_service.repository.session.commit()
+    
+    assert test_dataset is not None
+    assert initial_datasets_count + 1 == dataset_service.count_synchronized_datasets()
+    assert test_dataset.is_anonymous == False
+
+def test_upload_anonymous_dataset(test_client, dataset_service):
+    initial_datasets_count = dataset_service.count_synchronized_datasets()
+    initial_dsmetadata_count = dataset_service.count_dsmetadata()
+    dataset = {
+        "user_id": 1,
+        "ds_meta_data_id": 3,
+        "is_anonymous": True,
+    }
+    test_dataset = dataset_service.repository.create(**dataset)
+    dataset_service.repository.session.commit()
+    
+    assert test_dataset is not None
+    assert initial_datasets_count + 1 == dataset_service.count_synchronized_datasets()
+    assert test_dataset.is_anonymous == True
+    
+def test_upload_dataset_positive(test_client, dataset_service):
+    initial_datasets_count = dataset_service.count_synchronized_datasets()
+    dataset = {
+        "user_id": 1,
+        "ds_meta_data_id": 4,
+        "is_anonymous": False,
+    }
+    test_dataset = dataset_service.repository.create(**dataset)
+    dataset_service.repository.session.commit()
+    
+    assert test_dataset is not None
+    assert initial_datasets_count + 1 == dataset_service.count_synchronized_datasets()
+    assert test_dataset.is_anonymous == False
+
+def test_upload_dataset_negative(test_client, dataset_service):
+    initial_datasets_count = dataset_service.count_synchronized_datasets()
+    dataset = {
+        "user_id": None,  # Invalid user_id
+        "ds_meta_data_id": 5,
+        "is_anonymous": False,
+    }
+    try:
+        test_dataset = dataset_service.repository.create(**dataset)
+        dataset_service.repository.session.commit()
+        assert False, "Expected an exception due to invalid user_id"
+    except Exception as e:
+        dataset_service.repository.session.rollback()  # Rollback the session
+        assert True  # Exception is expected
+    finally:
+        assert initial_datasets_count == dataset_service.count_synchronized_datasets()
+
+def test_upload_anonymous_dataset_negative(test_client, dataset_service):
+    initial_datasets_count = dataset_service.count_synchronized_datasets()
+    dataset = {
+        "user_id": 1,
+        "ds_meta_data_id": None,  # Invalid ds_meta_data_id
+        "is_anonymous": True,
+    }
+    try:
+        test_dataset = dataset_service.repository.create(**dataset)
+        dataset_service.repository.session.commit()
+        assert False, "Expected an exception due to invalid ds_meta_data_id"
+    except Exception as e:
+        dataset_service.repository.session.rollback()  # Rollback the session
+        assert True  # Exception is expected
+    finally:
+        assert initial_datasets_count == dataset_service.count_synchronized_datasets()
 
 def test_should_insert_author(dataset_service):
     initial_authors_count = dataset_service.count_authors()

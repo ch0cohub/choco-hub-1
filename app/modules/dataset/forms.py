@@ -6,16 +6,17 @@ from wtforms import (
     FormField,
     SubmitField,
     TextAreaField,
+    BooleanField,
 )
-from wtforms.validators import DataRequired, URL, Optional
+from wtforms.validators import DataRequired, URL, Optional, ValidationError
 
 from app.modules.dataset.models import PublicationType
 
 
 class AuthorForm(FlaskForm):
-    name = StringField("Name", validators=[DataRequired()])
-    affiliation = StringField("Affiliation")
-    orcid = StringField("ORCID")
+    name = StringField("Name", validators=[Optional()])
+    affiliation = StringField("Affiliation", validators=[Optional()])
+    orcid = StringField("ORCID", validators=[Optional()])
     gnd = StringField("GND")
 
     class Meta:
@@ -76,8 +77,9 @@ class DataSetForm(FlaskForm):
     publication_doi = StringField("Publication DOI", validators=[Optional(), URL()])
     dataset_doi = StringField("Dataset DOI", validators=[Optional(), URL()])
     tags = StringField("Tags (separated by commas)")
-    authors = FieldList(FormField(AuthorForm))
+    authors = FieldList(FormField(AuthorForm), min_entries=1)
     feature_models = FieldList(FormField(FeatureModelForm), min_entries=1)
+    is_anonymous = BooleanField("Anonymize dataset")
 
     submit = SubmitField("Submit")
 
@@ -107,3 +109,9 @@ class DataSetForm(FlaskForm):
 
     def get_feature_models(self):
         return [fm.get_feature_model() for fm in self.feature_models]
+
+    def validate_authors(self, field):
+        if not self.is_anonymous:
+            for author in field.entries:
+                if not author.name or not author.name.strip():
+                    raise ValidationError("El nombre del autor no puede estar vacío")

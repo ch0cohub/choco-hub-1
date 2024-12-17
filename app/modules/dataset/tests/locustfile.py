@@ -1,4 +1,7 @@
 import random
+from app.modules.auth.models import User
+from app.modules.dataset.models import DSMetaData, DataSet, PublicationType
+from app.modules.profile.models import UserProfile
 from locust import HttpUser, TaskSet, task
 from app.modules.dataset.models import DataSet
 from core.locust.common import get_csrf_token, fake
@@ -11,7 +14,7 @@ class DatasetBehavior(TaskSet):
         self.dataset()
         self.signupForRating()
         self.loginForRating()
-
+        
     def signupForRating(self):
         response = self.client.get("/signup")
         csrf_token = get_csrf_token(response)

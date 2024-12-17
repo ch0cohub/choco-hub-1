@@ -84,7 +84,7 @@ var currentId = 0;
 
         document.getElementById('add_author').addEventListener('click', function () {
             let authors = document.getElementById('authors');
-            let newAuthor = createAuthorBlock(amount_authors++, "");
+            let newAuthor = createAuthorBlock(1+amount_authors++, "");
             authors.appendChild(newAuthor);
         });
 
@@ -137,6 +137,9 @@ var currentId = 0;
                 clean_upload_errors();
                 show_loading();
 
+                // Check if the user selected anonymous dataset
+                const isAnonymous = document.getElementById('anonymousCheckbox').checked;
+
                 // check title and description
                 let check = check_title_and_description();
 
@@ -161,6 +164,7 @@ var currentId = 0;
                     const csrfToken = document.getElementById('csrf_token').value;
                     const formUploadData = new FormData();
                     formUploadData.append('csrf_token', csrfToken);
+                    formUploadData.append('is_anonymous', isAnonymous);
 
                     for (let key in formData) {
                         if (formData.hasOwnProperty(key)) {
@@ -181,22 +185,7 @@ var currentId = 0;
                         }
                     }
 
-
-                    let checked_name = true;
-                    if (Array.isArray(formData.author_name)) {
-                        for (let name of formData.author_name) {
-                            name = name.trim();
-                            if (name === '') {
-                                hide_loading();
-                                write_upload_error("The author's name cannot be empty");
-                                checked_name = false;
-                                break;
-                            }
-                        }
-                    }
-
-
-                    if (checked_orcid && checked_name) {
+                    if (checked_orcid || isAnonymous) {
                         fetch('/dataset/upload', {
                             method: 'POST',
                             body: formUploadData
@@ -221,13 +210,13 @@ var currentId = 0;
                             .catch(error => {
                                 console.error('Error in POST request:', error);
                             });
+                    } else {
+                        hide_loading();
                     }
-
 
                 } else {
                     hide_loading();
                 }
-
 
             });
         };

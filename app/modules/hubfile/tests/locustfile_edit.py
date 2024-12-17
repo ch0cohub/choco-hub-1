@@ -59,8 +59,8 @@ class EditFileBehavior(TaskSet):
                 Video | Audio => "Media Player"
             """
         }
-        headers = {"Content-Type": "application/json"}
-        response = self.client.post("/file/edit/25", json=payload, headers=headers)
+        headers = {'Content-Type': 'application/json'}
+        response = self.client.post("/file/edit/99", json=payload, headers=headers)
 
         if response.status_code != 200:
             print(f"Edit file failed: {response.status_code}")

@@ -40,6 +40,16 @@
                     <div>
                         <span class="badge bg-secondary">{{ dataset.get_cleaned_publication_type() }}</span>
                     </div>
+                    <!-- Botón para cambiar el estado de anonimato (Paso 6) -->
+                    {% if current_user.is_authenticated and dataset.user_id == current_user.id  and dataset.is_anonymous%}
+                    <form action="{{ url_for('dataset.toggle_anonymity', dataset_id=dataset.id) }}" method="post">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            {% if dataset.is_anonymous %}
+                                Make authors metadata public                                
+                            {% endif %}
+                        </button>
+                    </form>
+                {% endif %}
                 </div>
                 <p class="text-secondary">{{ dataset.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
 
@@ -64,9 +74,13 @@
                         </span>
                     </div>
                     <div class="col-md-8 col-12">
-                        <a href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
-                            {{ dataset.user.profile.surname }}, {{ dataset.user.profile.name }}
-                        </a>
+                        {% if dataset.is_anonymous %}
+                            <p id="uploadedby" class="p-0 m-0">Anónimo</p>
+                        {% else %}
+                            <a id="uploadedby" href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
+                                {{ dataset.user.profile.surname }}, {{ dataset.user.profile.name }}
+                            </a>
+                        {% endif %}
                     </div>
 
                 </div>
@@ -79,17 +93,21 @@
                         </span>
                     </div>
                     <div class="col-md-8 col-12">
-                        {% for author in dataset.ds_meta_data.authors %}
-                        <p class="p-0 m-0">
-                            {{ author.name }}
-                            {% if author.affiliation %}
-                            ({{ author.affiliation }})
-                            {% endif %}
-                            {% if author.orcid %}
-                            ({{ author.orcid }})
-                            {% endif %}
-                        </p>
-                        {% endfor %}
+                        {% if not dataset.is_anonymous %}
+                            {% for author in dataset.ds_meta_data.authors %}
+                                <p id="authors" class="p-0 m-0">
+                                    {{ author.name }}
+                                    {% if author.affiliation %}
+                                        ({{ author.affiliation }})
+                                    {% endif %}
+                                    {% if author.orcid %}
+                                        ({{ author.orcid }})
+                                    {% endif %}
+                                </p>
+                            {% endfor %}
+                        {% else %}
+                            <p id="authors" class="p-0 m-0">Anónimo</p>
+                        {% endif %}
                     </div>
 
 
@@ -162,12 +180,12 @@
                     </div>
                     <div class="col-md-8 col-12">
                         <!-- Like Button -->
-                        <button onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', 1)" class="btn btn-primary btn-sm">
+                        <button id="like" onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', 1)" class="btn btn-primary btn-sm">
                             Like
                         </button>
                         
                         <!-- Dislike Button -->
-                        <button onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', -1)" class="btn btn-danger btn-sm">
+                        <button id="dislike" onclick="handleLike('{{ dataset.id }}', '{{ current_user.id }}', -1)" class="btn btn-danger btn-sm">
                             Dislike
                         </button>
                 
@@ -741,4 +759,43 @@ async function handleLikeModel(featureModelId, userId, value) {
 
 </script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[action*="toggle_anonymity"]').forEach(form => {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Success: ' + data.message);
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+    });
+</script>
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('dataset.scripts') }}"></script>
+    <script src="{{ url_for('zenodo.scripts') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            feather.replace();
+        });
+    </script>
 {% endblock %}
