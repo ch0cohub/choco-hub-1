@@ -14,10 +14,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Fetch All Branches
+      - name: Fetch All Remote Branches
         run: git fetch --all
 
-      - name: List Stale Branches
+      - name: List Stale Remote Branches
         id: list_stale
         run: |
           # Get the current date in seconds since the Unix epoch
@@ -26,9 +26,9 @@ jobs:
           # Initialize an empty list to store stale branches
           stale_branches=""
 
-          # Iterate over all branches except the default branch (e.g., main or master)
-          for branch in $(git for-each-ref --format='%(refname:short) %(committerdate:unix)' refs/heads/ | awk '$2 != "" {print $0}'); do
-            branch_name=$(echo $branch | awk '{print $1}')
+          # Iterate over all remote branches
+          for branch in $(git for-each-ref --format='%(refname:short) %(committerdate:unix)' refs/remotes/ | awk '$2 != "" {print $0}'); do
+            branch_name=$(echo $branch | awk '{print $1}' | sed 's#refs/remotes/origin/##')  # Remove remote prefix
             branch_date=$(echo $branch | awk '{print $2}')
             
             # Calculate the age of the branch in seconds
@@ -40,6 +40,7 @@ jobs:
             fi
           done
 
+          # Set the list of stale branches as output
           echo "::set-output name=stale_branches::$stale_branches"
 
       - name: Open Issues for Stale Branches
