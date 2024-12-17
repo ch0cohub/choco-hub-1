@@ -3,6 +3,7 @@ from app.modules.auth.models import User
 from app.modules.dataset.models import DSMetaData, DataSet, PublicationType
 from app.modules.profile.models import UserProfile
 from locust import HttpUser, TaskSet, task
+from app.modules.dataset.models import DataSet
 from core.locust.common import get_csrf_token, fake
 from core.environment.host import get_host_for_locust_testing
 import random
@@ -28,7 +29,7 @@ class DatasetBehavior(TaskSet):
         )
         if response.status_code != 200:
             print(f"Signup failed: {response.status_code}")
-    
+
     def loginForRating(self):
         response = self.client.get("/login")
         if response.status_code != 200 or "Login" not in response.text:
@@ -62,13 +63,16 @@ class DatasetBehavior(TaskSet):
                 print(f"Archivo descargado exitosamente: {response.status_code}")
             else:
                 print(f"Error al descargar archivo: {response.status_code}")
-     
+
     @task
     def like_dataset(self):
         # Simulating dataset liking by sending random valid values
-        dataset_id = 2  # id de cuando la bdd esta construida desde 0
+        dataset = DataSet.query.first()
+        dataset_id = dataset.id  # IDs de prueba# Simulate a dataset ID range
         value = random.choice([1, -1])  # Simulate liking or disliking
-        headers = {"X-CSRFToken": self.csrf_token} if hasattr(self, "csrf_token") else {}
+        headers = (
+            {"X-CSRFToken": self.csrf_token} if hasattr(self, "csrf_token") else {}
+        )
 
         with self.client.post(
             "/api/dataset/like",
@@ -79,12 +83,15 @@ class DatasetBehavior(TaskSet):
                 data = response.json()
                 print(f"Total likes for dataset {dataset_id}: {data['total_likes']}")
             else:
-                print(f"Error liking dataset {dataset_id}: {response.status_code} - {response.text}")
+                print(
+                    f"Error liking dataset {dataset_id}: {response.status_code} - {response.text}"
+                )
 
     @task
     def update_dataset_community(self):
-        dataset_id = random.randint(1, 1000)  # IDs de prueba
-        community_id = random.randint(1, 500)  # IDs de prueba
+        dataset = DataSet.query.first()
+        dataset_id = dataset.id  # IDs de prueba
+        community_id = 1  # IDs de prueba
 
         response = self.client.post(
             "/dataset/update_community",
@@ -94,8 +101,9 @@ class DatasetBehavior(TaskSet):
 
     @task
     def remove_dataset_community(self):
-        dataset_id = random.randint(1, 1000)  # IDs de prueba
-        community_id = random.randint(1, 500)  # IDs de prueba
+        dataset = DataSet.query.first()
+        dataset_id = dataset.id  # IDs de prueba
+        community_id = 1  # IDs de prueba
 
         response = self.client.post(
             "/dataset/remove_community",

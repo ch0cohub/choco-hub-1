@@ -5,6 +5,7 @@ import pytest
 from app import create_app
 from app.modules.dataset.forms import AuthorForm, DataSetForm, FeatureModelForm
 from app.modules.dataset.models import DSMetaData, DataSet, DatasetReview, PublicationType
+
 from app.modules.dataset.services import DataSetService
 from pathlib import Path
 import zipfile
@@ -38,6 +39,7 @@ def test_client(test_client):
         UserProfile(name="Name", surname="Surname", is_verified=True, user=user_test)
 
         db.session.add(user_test)
+
         db.session.commit()
 
     yield test_client
@@ -213,7 +215,9 @@ def test_like_dataset_success(test_client):
             "/api/dataset/like",
             json={"dataset_id": 1, "value": 1},
         )
-        print("----------------------------------************************--------------------------")
+        print(
+            "----------------------------------************************--------------------------"
+        )
         print(response.get_json())
 
         # Check response and database changes
