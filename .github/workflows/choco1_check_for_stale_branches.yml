@@ -20,8 +20,9 @@ jobs:
       - name: List Stale Remote Branches
         id: list_stale
         run: |
-          # Get the current date in seconds since the Unix epoch
-          current_date=$(date +%s)
+          # Get the current date in seconds since the Unix epoch, explicitly in UTC
+          current_date=$(date -u +%s)
+          echo "Current date (UTC): $current_date"
 
           # Initialize an empty list to store stale branches
           stale_branches=""
@@ -31,6 +32,9 @@ jobs:
             branch_name=$(echo $branch | awk '{print $1}' | sed 's#refs/remotes/origin/##')  # Remove remote prefix
             branch_date=$(echo $branch | awk '{print $2}')
             
+            # Debugging: Show the branch name and commit date
+            echo "Branch: $branch_name, Commit date: $branch_date"
+
             # Calculate the age of the branch in seconds
             age=$((current_date - branch_date))
 
