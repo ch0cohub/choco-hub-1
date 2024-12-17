@@ -1,6 +1,5 @@
 name: Release Workflow
 
-# Se activa automáticamente al hacer push de un tag o manualmente desde la UI de Actions.
 on:
   push:
     branches:
@@ -9,7 +8,6 @@ on:
 
 jobs:
   release:
-    if: ${{ github.repository == 'ch0cohub/choco-hub-1' }}
     name: Create GitHub Release
     runs-on: ubuntu-latest
 
@@ -17,21 +15,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Asegura que se obtengan todos los tags
+
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          # Obtener el último tag
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [[ -z "$latest_tag" ]]; then
+            echo "No tag found for this commit. Skipping release."
+            exit 0
+          fi
+
+          echo "Latest tag: $latest_tag"
+          echo "::set-output name=tag::$latest_tag"
 
       - name: Validate Tag Format
-        id: validate_tag
         run: |
-          current_tag=$(git describe --tags --abbrev=0)
-          if [[ ! $current_tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid tag format: $current_tag"
+          tag=${{ steps.get_tag.outputs.tag }}
+          if [[ ! $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: $tag"
             exit 1
           fi
+          echo "Tag format is valid"
 
       - name: Check if Major or Minor Version
         id: check_version
         run: |
-          current_tag=$(git describe --tags --abbrev=0)
+          current_tag=${{ steps.get_tag.outputs.tag }}
           previous_tag=$(git describe --tags --abbrev=0 HEAD^ || echo "v0.0.0")
 
           current_major=$(echo $current_tag | cut -d '.' -f 1 | tr -d 'v')
@@ -39,6 +51,9 @@ jobs:
 
           current_minor=$(echo $current_tag | cut -d '.' -f 2)
           previous_minor=$(echo $previous_tag | cut -d '.' -f 2)
+
+          echo "Current major: $current_major, Current minor: $current_minor"
+          echo "Previous major: $previous_major, Previous minor: $previous_minor"
 
           if [[ "$current_major" -gt "$previous_major" ]] || [[ "$current_minor" -gt "$previous_minor" ]]; then
             echo "is_release=true" >> $GITHUB_ENV
@@ -55,24 +70,62 @@ jobs:
       - name: Generate Changelog
         id: changelog
         run: |
-          current_tag=$(git describe --tags --abbrev=0)
+          tag=${{ steps.get_tag.outputs.tag }}
           previous_tag=$(git describe --tags --abbrev=0 HEAD^ || echo "")
 
           if [ -z "$previous_tag" ]; then
-            changelog=$(git log --pretty=format:"- %s (%an)")
+            changelog=$(git log --pretty=format:"- %s (%an)" $tag)
           else
-            changelog=$(git log $previous_tag..$current_tag --pretty=format:"- %s (%an)")
+            changelog=$(git log $previous_tag..$tag --pretty=format:"- %s (%an)")
           fi
 
           echo "Changelog:"
           echo "$changelog"
-          echo "changelog=$changelog" >> $GITHUB_ENV
+          echo "::set-output name=changelog::$changelog"
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          body: ${{ env.changelog }}
+      - name: Check if Release Already Exists
+        id: check_release
+        run: |
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.get_tag.outputs.tag }}")
+
+          if echo "$response" | grep '"id":'; then
+            echo "release_exists=true" >> $GITHUB_ENV
+            release_id=$(echo "$response" | jq -r '.id')
+            echo "release_id=$release_id" >> $GITHUB_ENV
+          else
+            echo "release_exists=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create or Update Release
+        run: |
+          tag=${{ steps.get_tag.outputs.tag }}
+          changelog=${{ steps.changelog.outputs.changelog }}
+
+          if [[ "$release_exists" == "true" ]]; then
+            echo "Updating existing release..."
+            curl -X PATCH \
+              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "tag_name": "'"$tag"'",
+                "name": "'"$tag"'",
+                "body": "'"$changelog"'"
+              }' \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$release_id"
+          else
+            echo "Creating a new release..."
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "tag_name": "'"$tag"'",
+                "name": "'"$tag"'",
+                "body": "'"$changelog"'"
+              }' \
+              "https://api.github.com/repos/${{ github.repository }}/releases"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          release_exists: ${{ env.release_exists }}
+          release_id: ${{ env.release_id }}
