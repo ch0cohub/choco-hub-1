@@ -1,4 +1,4 @@
-name: Open Issue for Stale Branches
+name: Open Issue for Stale Branches with Week in Time
 
 on:
   schedule:
@@ -17,46 +17,36 @@ jobs:
       - name: Fetch All Remote Branches
         run: git fetch --all
 
-      - name: List Stale Remote Branches
+      - name: List Branches with "week" in Time
         id: list_stale
         run: |
-          # Get the current date in seconds since the Unix epoch, explicitly in UTC
-          current_date=$(date -u +%s)
-          echo "Current date (UTC): $current_date"
+          # Initialize an empty list to store branches with "week" in the last commit
+          branches_with_week=""
 
-          # Initialize an empty list to store stale branches
-          stale_branches=""
-
-          # Get all remote branches with their last commit date in seconds
-          for branch in $(git for-each-ref --format='%(refname:short) %(committerdate:unix)' refs/remotes/ | awk '$2 != "" {print $0}'); do
+          # Get the last commit date for each remote branch and check for "week" in the date
+          for branch in $(git for-each-ref --format='%(refname:short) %(authordate:relative)' refs/remotes/); do
             branch_name=$(echo $branch | awk '{print $1}' | sed 's#refs/remotes/origin/##')  # Remove remote prefix
-            branch_date=$(echo $branch | awk '{print $2}')
-            
-            # Debugging: Show the branch name and commit date
-            echo "Branch: $branch_name, Commit date: $branch_date"
+            commit_date=$(echo $branch | awk '{print $2}')
 
-            # Calculate the age of the branch in seconds
-            age=$((current_date - branch_date))
-
-            # Check if the branch is older than one month (2592000 seconds)
-            if [ $age -gt 2592000 ]; then
-              stale_branches+="$branch_name\n"
+            # Check if the commit date contains the word "week"
+            if [[ "$commit_date" == *"week"* ]]; then
+              branches_with_week+="$branch_name\n"
             fi
           done
 
-          # Set the list of stale branches as output (remove trailing newline)
-          echo "::set-output name=stale_branches::$(echo -e "$stale_branches" | sed 's/\n$//')"
+          # Set the list of branches with "week" in their commit time as output
+          echo "::set-output name=branches_with_week::$(echo -e "$branches_with_week" | sed 's/\n$//')"
 
-      - name: Open Issue for Stale Branches
-        if: ${{ steps.list_stale.outputs.stale_branches != '' }}
+      - name: Open Issue for Branches with "week" in Commit Time
+        if: ${{ steps.list_stale.outputs.branches_with_week != '' }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Use GH_TOKEN for authentication
         run: |
-          # If there are stale branches, create an issue
-          stale_branch_list="${{ steps.list_stale.outputs.stale_branches }}"
+          # If there are branches with "week" in their commit time, create an issue
+          branch_list="${{ steps.list_stale.outputs.branches_with_week }}"
           json_payload=$(jq -n \
-            --arg title "Stale Branches Detected" \
-            --arg body "The following branches have not had any commits in over a month and are considered stale:\n\n$stale_branch_list\nConsider reviewing or archiving them." \
+            --arg title "Branches with 'week' in Last Commit Time" \
+            --arg body "The following branches have commits that include the word 'week' in their time:\n\n$branch_list\nPlease review these branches." \
             --argjson labels '["stale-branch"]' \
             '{title: $title, body: $body, labels: $labels}')
           
