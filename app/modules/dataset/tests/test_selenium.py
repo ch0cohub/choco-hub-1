@@ -131,6 +131,31 @@ def test_upload_dataset():
 
         # Close the browser
         close_driver(driver)
+        
+        
+def test_testseleniumlike():
+    driver = initialize_driver()
+    driver.get("http://localhost:5000/")
+    wait_for_page_to_load(driver)
+    driver.set_window_size(1850, 1053)
+    
+    driver.find_element(By.CSS_SELECTOR, ".nav-link:nth-child(2)").click()
+    driver.find_element(By.ID, "email").click()
+    driver.find_element(By.ID, "email").send_keys("user2@example.com")
+    driver.find_element(By.ID, "password").click()
+    driver.find_element(By.ID, "password").send_keys("1234")
+    driver.find_element(By.ID, "submit").click()
+    driver.get("http://localhost:5000/doi/10.1234/dataset2/")
+    wait_for_page_to_load(driver)
+    like_buttom = WebDriverWait(driver, 1).until(
+      expected_conditions.element_to_be_clickable((By.ID, "dislike"))
+    )
+    # Intentar hacer clic en el botón de editar usando JavaScript
+    driver.execute_script("arguments[0].click();", like_buttom)
+    
+    # Esperar un momento para ver el resultado
+    #time.sleep(1)
+    close_driver(driver)
 
 def test_upload_anonymous_dataset():
     driver = initialize_driver()
@@ -308,6 +333,8 @@ def test_make_dataset_public():
 
 
 # Call the test function
-# test_upload_dataset()
-# test_upload_anonymous_dataset()
-# test_make_dataset_public()
+test_upload_dataset()
+test_upload_anonymous_dataset()
+test_make_dataset_public()
+test_upload_dataset()
+test_testseleniumlike()

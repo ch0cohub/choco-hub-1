@@ -1,0 +1,56 @@
+name: Open Issue for Stale Branches with Week in Time
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight (UTC)
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  check-stale-branches:
+    if: ${{ github.repository == 'ch0cohub/choco-hub-1' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Fetch All Remote Branches
+        run: git fetch --all
+
+      - name: List Branches with "week" in Time
+        id: list_stale
+        run: |
+          # Initialize an empty list to store branches with "week" in the last commit
+          branches_with_week=""
+
+          # Get the last commit date for each remote branch and check for "week" in the date
+          for branch in $(git for-each-ref --format='%(refname:short) %(authordate:relative)' refs/remotes/); do
+            branch_name=$(echo $branch | awk '{print $1}' | sed 's#refs/remotes/origin/##')  # Remove remote prefix
+            commit_date=$(echo $branch | awk '{print $2}')
+
+            # Check if the commit date contains the word "week"
+            if [[ "$commit_date" == *"week"* ]]; then
+              branches_with_week+="$branch_name\n"
+            fi
+          done
+
+          # Set the list of branches with "week" in their commit time as output
+          echo "::set-output name=branches_with_week::$(echo -e "$branches_with_week" | sed 's/\n$//')"
+
+      - name: Open Issue for Branches with "week" in Commit Time
+        if: ${{ steps.list_stale.outputs.branches_with_week != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Use GH_TOKEN for authentication
+        run: |
+          # If there are branches with "week" in their commit time, create an issue
+          branch_list="${{ steps.list_stale.outputs.branches_with_week }}"
+          json_payload=$(jq -n \
+            --arg title "Branches with 'week' in Last Commit Time" \
+            --arg body "The following branches have commits that include the word 'week' in their time:\n\n$branch_list\nPlease review these branches." \
+            --argjson labels '["stale-branch"]' \
+            '{title: $title, body: $body, labels: $labels}')
+          
+          curl -X POST -H "Authorization: token $GH_TOKEN" \
+               -H "Accept: application/vnd.github.v3+json" \
+               -d "$json_payload" \
+               https://api.github.com/repos/${{ github.repository }}/issues
