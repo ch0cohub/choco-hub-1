@@ -18,6 +18,7 @@ from flask import (
     make_response,
     abort,
     url_for,
+    flash,
     send_file,
 )
 from flask_login import login_required, current_user
@@ -57,18 +58,46 @@ def create_dataset():
     form = DataSetForm()
     if request.method == "POST":
 
-        dataset = None
-
         if not form.validate_on_submit():
             return jsonify({"message": form.errors}), 400
 
         try:
             logger.info("Creating dataset...")
+
+            # **Paso A: Manejar la Anonimización**
+            is_anonymous = form.is_anonymous.data
+
+            if is_anonymous:
+                # Si es anónimo, no se guardan datos de autores
+                authors_data = []
+            else:
+                # Si no es anónimo, extraer y validar los datos de autores
+                authors_data = []
+                for author_form in form.authors.entries:
+                    name = author_form.name.data.strip()
+                    affiliation = author_form.affiliation.data.strip()
+                    orcid = author_form.orcid.data.strip()
+
+                    if not name:
+                        raise ValueError("The author's name cannot be empty")
+
+                    author_data = {
+                        'name': name,
+                        'affiliation': affiliation,
+                        'orcid': orcid
+                    }
+                    authors_data.append(author_data)
+
+            # **Paso B: Crear el Dataset con la Información de Anonimización**
             dataset = dataset_service.create_from_form(
-                form=form, current_user=current_user
+                form=form,
+                current_user=current_user,
+                is_anonymous=is_anonymous,
+                # authors=authors_data  # Pasar los datos de autores al servicio
             )
             logger.info(f"Created dataset: {dataset}")
             dataset_service.move_feature_models(dataset)
+
         except Exception as exc:
             logger.exception(f"Exception while create dataset data in local {exc}")
             return (
@@ -381,3 +410,15 @@ def remove_dataset_community():
         return jsonify({"message": "Community association removed successfully"})
 
     return jsonify({"error": "Dataset is not associated with the community"}), 400
+
+@dataset_bp.route("/dataset/<int:dataset_id>/toggle_anonymity", methods=["POST"])
+@login_required
+def toggle_anonymity(dataset_id):
+    try:
+        dataset = dataset_service.toggle_anonymity(dataset_id, current_user)
+        return jsonify({"message": "Dataset anonymity toggled successfully", "is_anonymous": dataset.is_anonymous}), 200
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
+    except Exception as e:
+        logger.exception(f"Exception while toggling dataset anonymity: {e}")
+        return jsonify({"error": "An error occurred while toggling dataset anonymity"}), 500

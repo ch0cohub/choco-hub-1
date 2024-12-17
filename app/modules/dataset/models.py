@@ -81,6 +81,7 @@ class DataSet(db.Model):
         db.Integer, db.ForeignKey("ds_meta_data.id"), nullable=False
     )
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_anonymous = db.Column(db.Boolean, default=False)
 
     ds_meta_data = db.relationship(
         "DSMetaData", backref=db.backref("data_set", uselist=False)
