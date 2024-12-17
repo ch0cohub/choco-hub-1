@@ -148,7 +148,7 @@ def test_testseleniumlike():
     driver.get("http://localhost:5000/doi/10.1234/dataset2/")
     wait_for_page_to_load(driver)
     like_buttom = WebDriverWait(driver, 1).until(
-      expected_conditions.element_to_be_clickable((By.ID, "dislike"))
+      EC.element_to_be_clickable((By.ID, "dislike"))
     )
     # Intentar hacer clic en el botón de editar usando JavaScript
     driver.execute_script("arguments[0].click();", like_buttom)
