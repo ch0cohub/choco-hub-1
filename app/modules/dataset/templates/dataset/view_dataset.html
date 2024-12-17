@@ -74,9 +74,9 @@
                     </div>
                     <div class="col-md-8 col-12">
                         {% if dataset.is_anonymous %}
-                            <p class="p-0 m-0">Anónimo</p>
+                            <p id="uploadedby" class="p-0 m-0">Anónimo</p>
                         {% else %}
-                            <a href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
+                            <a id="uploadedby" href="{{ url_for('profile.user_datasets', user_id=dataset.user.id) }}">
                                 {{ dataset.user.profile.surname }}, {{ dataset.user.profile.name }}
                             </a>
                         {% endif %}
@@ -93,7 +93,7 @@
                     <div class="col-md-8 col-12">
                         {% if not dataset.is_anonymous %}
                             {% for author in dataset.ds_meta_data.authors %}
-                                <p class="p-0 m-0">
+                                <p id="authors" class="p-0 m-0">
                                     {{ author.name }}
                                     {% if author.affiliation %}
                                         ({{ author.affiliation }})
@@ -104,7 +104,7 @@
                                 </p>
                             {% endfor %}
                         {% else %}
-                            <p class="p-0 m-0">Anónimo</p>
+                            <p id="authors" class="p-0 m-0">Anónimo</p>
                         {% endif %}
                     </div>
 
