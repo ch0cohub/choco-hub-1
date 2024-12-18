@@ -186,6 +186,7 @@ class DataSetService(BaseService):
         return datasets
 
     def generate_datasets_and_name_zip(self) -> tuple[str, str]:
+
         temp_dir = Path(tempfile.mkdtemp())
         zip_filename = (
             f"chocohub2_datasets_from_{datetime.now().strftime('%d_%m_%Y')}.zip"
@@ -202,7 +203,8 @@ class DataSetService(BaseService):
                             file_path, arcname=Path(dataset_name) / relative_path
                         )
 
-        return str(zip_path), zip_filename
+
+        return str(zip_path), zip_filename, temp_dir
     
     def toggle_anonymity(self, dataset_id: int, current_user) -> DataSet:
         dataset = self.repository.get_or_404(dataset_id)
@@ -234,6 +236,7 @@ class DataSetService(BaseService):
 
         self.repository.session.commit()
         return dataset
+
 
 
 class AuthorService(BaseService):
